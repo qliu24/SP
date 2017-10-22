@@ -37,5 +37,32 @@ class ScoreComputer:
                                                       self.model_logPriors: priors})
         
         return result[0]
+    
+    
+    def comptScore_mixture(self, patch_feat, sp_models, cls_num):
+        # first sp_num-2 models are mixture models for SP
+        # last 2 models are unary model for BG
+        sp_num = self.sp_num-2
+        assert(len(sp_models)==self.sp_num)
+        
+        weights = np.array([[mm[kk][0] for kk in range(cls_num)] for mm in sp_models[0:-2]]).reshape(sp_num*cls_num, self.patch_len, self.patch_len, self.vc_num)
+        weights = np.transpose(weights, [1,2,3,0])
+        logZs = np.array([[mm[kk][1] for kk in range(cls_num)] for mm in sp_models[0:-2]]).reshape(sp_num*cls_num,-1)
+        priors_kk = np.array([[mm[kk][2] for kk in range(cls_num)] for mm in sp_models[0:-2]]).reshape(sp_num*cls_num,-1)
+        priors = np.array([mm[0][3]for mm in sp_models[0:-2]])
+        
+        result = self.sess.run(self.scores, feed_dict={self.patch_feat: [patch_feat], \
+                                                      self.model_weights: weights, \
+                                                      self.model_logZs: logZs, \
+                                                      self.model_logPriors: priors_kk})[0]
+        
+        result_final = np.zeros((self.patch_len, self.patch_len, sp_num))
+        for pp in range(sp_num):
+            result_final[:,:,pp] = np.max(result[:,:,[pp*4:(pp+1)*4]], axis=-1) + priors[pp]
+            
+        result_BG = self.comptScore(patch_feat, sp_models[-2:])
+            
+        
+        return np.concatenate((result_final, result_BG), axis=-1)
         
         

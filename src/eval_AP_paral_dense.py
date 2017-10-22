@@ -121,21 +121,31 @@ def eval_AP_inner(inp):
 paral_num = 6
 category = 'car'
 set_type = 'occ'
-tf_flag = 'True'
-    
 
 
 # load model
 # model should be a list with length = sp_num
 # list elements are tuples with weight (feature_len 1D array), logZ (scalar), logPrior (scalar)
-model_file = os.path.join(Model_dir, 'Unary_{}_{}.pickle'.format(VC['layer'], category))
+
+# Unary models
+# model_file = os.path.join(Model_dir, 'Unary_{}_{}.pickle'.format(VC['layer'], category))
+# with open(model_file,'rb') as fh:
+#     sp_models = pickle.load(fh)
+
+# sp_num = len(sp_models)
+
+# feature_len = VC['num']*(2*SP['patch_r']+1)**2
+# assert(len(sp_models[0][0])==feature_len)
+
+# Mix models
+model_file = os.path.join(Model_dir, 'Mix_{}_{}.pickle'.format(VC['layer'], category))
 with open(model_file,'rb') as fh:
     sp_models = pickle.load(fh)
 
 sp_num = len(sp_models)
 
 feature_len = VC['num']*(2*SP['patch_r']+1)**2
-assert(len(sp_models[0][0])==feature_len)
+assert(len(sp_models[0][0][0])==feature_len)
 
 # load VC centers
 with open(Dict['Dictionary'].format(category),'rb') as fh:
@@ -227,8 +237,7 @@ for nn in range(N):
             
             
 # get scores for each pixel
-if tf_flag:
-    sc = ScoreComputer(SP['patch_r'], VC['num'], sp_num)
+sc = ScoreComputer(SP['patch_r'], VC['num'], sp_num)
 
 score_map = [None for nn in range(N)]
 for nn in range(N):
@@ -269,7 +278,7 @@ for nn in range(N):
             
     score_all = np.zeros((lfb_height, lfb_width, sp_num)).ravel()
     for msk_curr,lfb_curr in zip(msk_ls, lfb_ls):
-        score_curr = sc.comptScore(lfb_curr, sp_models)
+        score_curr = sc.comptScore_mixture(lfb_curr, sp_models, SP['cls_num'])
         score_all[msk_curr.ravel()] = score_curr.ravel()
         
     score_all = score_all.reshape(lfb_height, lfb_width, -1)
@@ -277,19 +286,7 @@ for nn in range(N):
         
         
     score_map[nn] = score_all.copy()
-        
     
-    
-    # lfb_padded = np.pad(lfb, ((SP['patch_r'],SP['patch_r']),(SP['patch_r'],SP['patch_r']),(0,0)), 'constant')
-    # if tf_flag:
-    #     score_map[nn] = sc.comptScore(lfb, sp_models)
-    # else:
-    #     score_map[nn] = np.zeros((iheight,iwidth, sp_num))
-    #     for hh in range(iheight):
-    #         for ww in range(iwidth):
-    #             patch_feat = lfb_padded[hh:hh+2*SP['patch_r']+1, ww:ww+2*SP['patch_r']+1,:].ravel()
-    #             score_map[nn][hh,ww] = comptScores(patch_feat, sp_models)
-        
 # Evaluation
 # rich BG
 # inp_ls = [\
