@@ -3,7 +3,6 @@ from vcdist_funcs import *
 from config import *
 import time
 
-paral_num = 6
 
 def comptSimMat(category):
     vc_file = os.path.join(VCencode_dir, 'SP_{}_encoding_{}.pickle'.format(VC['layer'], category))
@@ -15,7 +14,7 @@ def comptSimMat(category):
     sp_num = len(all_info[0])
     assert(np.all([len(ff)==sp_num for ff in all_info])) # all have the same sp num
 
-    for pp in range(sp_num):
+    for pp in range(1,sp_num):
         print('computing similarity matrix for {} SP{}...'.format(category, pp))
         savename = os.path.join(Feat['cache_dir'],'simmat','simmat_{}_SP{}.pickle'.format(category,pp))
 
@@ -31,7 +30,7 @@ def comptSimMat(category):
         print('    total sample number: {}'.format(sp_cnt))
         _s = time.time()
         inputs = [(samples_pp, ss) for ss in range(sp_cnt)]
-        mat_dis = np.array(Parallel(n_jobs=paral_num)(delayed(vc_dis_paral)(i) for i in inputs))
+        mat_dis = np.array(Parallel(n_jobs=SP['paral_num'])(delayed(vc_dis_paral)(i) for i in inputs))
         _e = time.time()
         print('    total time: {}'.format((_e-_s)/60))
 
