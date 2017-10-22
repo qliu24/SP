@@ -32,14 +32,15 @@ def eval_AP_inner(inp):
         det_sp = det_sp[det >= nms_thresh]
         det = det[det >= nms_thresh]
         
-        # # enhance the candidate bbox with highest sp score 
+        # enhance the candidate bbox with highest sp score 
         # sort_idx_det = np.argsort(-det)
         # max_det_sp = np.max(det_sp[sort_idx_det[0:10]])
         # max_idx_det_sp = np.argmax(det_sp[sort_idx_det[0:10]])
-        # det[sort_idx_det[max_idx_det_sp]] += 0.2*np.absolute(max_det_sp)
+        # det[sort_idx_det[max_idx_det_sp]] += 100
         
         bb_loc = np.column_stack((c_list-49.5, r_list-49.5, c_list+49.5, r_list+49.5, det))
         nms_list = nms(bb_loc, 0.05)
+        
         bb_loc_ = np.concatenate((np.ones((len(nms_list), 1))*nn, bb_loc[nms_list]), axis=1)
         sp_detection = np.concatenate((sp_detection, bb_loc_), axis=0)
         
@@ -63,9 +64,10 @@ def eval_AP_inner(inp):
         img_id = int(id_list[dd])
         col_c = col_list[dd]
         row_c = row_list[dd]
+        
+        inst = spanno[img_id]
         if SP['criteria'] == 'dist':
             min_dist = np.inf
-            inst = spanno[img_id]
             for ii in range(inst.shape[0]):
                 xx = (inst[ii,0]+inst[ii,2])/2
                 yy = (inst[ii,1]+inst[ii,3])/2
@@ -82,7 +84,6 @@ def eval_AP_inner(inp):
 
         elif SP['criteria'] == 'iou':
             max_iou = -np.inf
-            inst = spanno[img_id]
             for ii in range(inst.shape[0]):
                 bbgt = inst[ii]
                 bb = bbox_list[dd]
@@ -119,8 +120,10 @@ def eval_AP_inner(inp):
 
 paral_num = 6
 category = 'car'
-set_type = 'train'
+set_type = 'occ'
 tf_flag = 'True'
+    
+
 
 # load model
 # model should be a list with length = sp_num
@@ -147,11 +150,17 @@ magic_thrh = thrh_ls[all_categories2.index(category)]
 
 # load features
 file_cache_feat = os.path.join(Feat['cache_dir'], 'feat_{}_{}_{}.pickle'.format(category, set_type, VC['layer']+'_dense'))
+if set_type=='occ' and SP['occ_level'] != 'ONE':
+    file_cache_feat = os.path.join(Feat['cache_dir'], \
+                                   'feat_{}_{}_{}.pickle'.format(category, \
+                                                                 '{}_{}'.format(set_type, SP['occ_level']), \
+                                                                 VC['layer']+'_dense'))
+    
 with open(file_cache_feat, 'rb') as fh:
     layer_feature = pickle.load(fh)
     
 N = len(layer_feature)
-# N = 100
+# N = 200
 print('Total image number for {} set of {}: {}'.format(set_type, category, N))
 
 # get test file list
@@ -282,17 +291,21 @@ for nn in range(N):
     #             score_map[nn][hh,ww] = comptScores(patch_feat, sp_models)
         
 # Evaluation
+# rich BG
 # inp_ls = [\
 #           (([score_map[nn][:,:,pp] - np.max(score_map[nn][:,:,np.arange(sp_num)!=pp], axis=2) for nn in range(N)], \
 #             [score_map[nn][:,:,pp] for nn in range(N)]), \
 #            [spanno[nn][pp] for nn in range(N)], img_size) \
 #           for pp in range(sp_num-2)]
 
+# simple BG
 inp_ls = [\
           (([score_map[nn][:,:,pp] - np.max(score_map[nn][:,:,[-2,-1]], axis=2) for nn in range(N)], \
             [score_map[nn][:,:,pp] for nn in range(N)]), \
            [spanno[nn][pp] for nn in range(N)], img_size) \
           for pp in range(sp_num-2)]
+
+
 # inp_ls = [([score_map[nn][:,:,pp] - np.max(score_map[nn][:,:,np.arange(sp_num)!=pp], axis=2) for nn in range(N)], \
 #            [spanno[nn][pp] for nn in range(N)], img_size) for pp in range(sp_num-2)]
 # inp_ls = [([score_map[nn][:,:,pp] - score_map[nn][:,:,-1] for nn in range(N)], \
