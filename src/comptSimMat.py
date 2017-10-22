@@ -4,7 +4,7 @@ from config import *
 import time
 
 
-def comptSimMat(category):
+def comptSimMat(category, to_compute):
     vc_file = os.path.join(VCencode_dir, 'SP_{}_encoding_{}.pickle'.format(VC['layer'], category))
     with open(vc_file,'rb') as fh:
         all_info = pickle.load(fh)
@@ -14,7 +14,7 @@ def comptSimMat(category):
     sp_num = len(all_info[0])
     assert(np.all([len(ff)==sp_num for ff in all_info])) # all have the same sp num
 
-    for pp in range(1,sp_num):
+    for pp in to_compute:
         print('computing similarity matrix for {} SP{}...'.format(category, pp))
         savename = os.path.join(Feat['cache_dir'],'simmat','simmat_{}_SP{}.pickle'.format(category,pp))
 
@@ -39,5 +39,8 @@ def comptSimMat(category):
         
         
 if __name__=='__main__':
+    to_compute = sys.argv[1:]
+    to_compute = [int(cc) for cc in to_compute]
+    print(to_compute)
     for category in all_categories2[3:4]:
-        comptSimMat(category)
+        comptSimMat(category, to_compute)
