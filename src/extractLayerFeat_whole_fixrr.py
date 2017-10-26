@@ -4,7 +4,8 @@ from FeatureExtractor import *
 from config import *
 import h5py
 
-def extractLayerFeat_whole_fixrr(category, extractor, set_type='train'):
+def extractLayerFeat_whole_fixrr(category, extractor, resize_tar, set_type='train'):
+    print('extracting {} set features for {} at resize value {}'.format(set_type, category, resize_tar))
     # img_dir = Dataset['occ_img_dir'].format(category,'NINE')
     if set_type == 'occ':
         img_dir = Dataset['occ_img_dir'].format(category, SP['occ_level'])
@@ -52,15 +53,20 @@ def extractLayerFeat_whole_fixrr(category, extractor, set_type='train'):
 
             img = cv2.imread(img_file)
             
-        img_resized = cv2.resize(img,None,fx=SP['resize_ratio'], fy=SP['resize_ratio'])
+        resize_ratio = resize_tar/np.min(img.shape[0:2])
+        img_resized = cv2.resize(img,None,fx=resize_ratio, fy=resize_ratio)
         
         layer_feature = extractor.extract_feature_image(img_resized)[0]
         assert(featDim == layer_feature.shape[2])
         feat_set[nn] = layer_feature
         
     print('\n')
-        
-    file_cache_feat = os.path.join(Feat['cache_dir'], 'feat_{}_{}_{}.pickle'.format(category, set_type, VC['layer']))
+    
+    dir_feat_cache = os.path.join(Feat['cache_dir'], 'resize_{}'.format(resize_tar))
+    if not os.path.exists(dir_feat_cache):
+        os.makedirs(dir_feat_cache)
+    
+    file_cache_feat = os.path.join(dir_feat_cache, 'feat_{}_{}_{}.pickle'.format(category, set_type, VC['layer']))
     with open(file_cache_feat, 'wb') as fh:
         pickle.dump(feat_set, fh)
         
@@ -70,6 +76,7 @@ def extractLayerFeat_whole_fixrr(category, extractor, set_type='train'):
         
             
 if __name__=='__main__':
+    resize_tar = int(sys.argv[1])
     extractor = FeatureExtractor(cache_folder=model_cache_folder, which_net='vgg16', which_layer=VC['layer'], which_snapshot=0)
-    for category in all_categories2:
-        extractLayerFeat_whole_fixrr(category, extractor, set_type='test')
+    for category in all_categories2[3:4]:
+        extractLayerFeat_whole_fixrr(category, extractor, resize_tar, set_type='test')

@@ -66,8 +66,11 @@ def extractLayerFeat_whole(category, extractor, set_type='train'):
         matcontent = sio.loadmat(anno_file)
         
         bbox_value = matcontent['record']['objects'][0,0][0,int(idx_list[nn])-1]['bbox'][0]
-        bbox_height = bbox_value[3]-bbox_value[1]
-        bbox_width = bbox_value[2]-bbox_value[0]
+        bbox_value = [max(math.ceil(bbox_value[0]), 1), max(math.ceil(bbox_value[1]), 1), \
+                        min(math.floor(bbox_value[2]), img_w), min(math.floor(bbox_value[3]), img_h)]
+        
+        bbox_height = bbox_value[3]-bbox_value[1]+1
+        bbox_width = bbox_value[2]-bbox_value[0]+1
         resize_ratio = scale_size/np.min((bbox_height,bbox_width))
         resize_ratio_ls[nn] = resize_ratio
         img_resized = cv2.resize(img,None,fx=resize_ratio, fy=resize_ratio)
@@ -86,12 +89,12 @@ def extractLayerFeat_whole(category, extractor, set_type='train'):
     with open(file_cache_feat, 'wb') as fh:
         pickle.dump(feat_set, fh)
         
-    # file_cache_rr = os.path.join(Feat['cache_dir'], 'feat_{}_{}_rr.pickle'.format(category, set_type))
-    # with open(file_cache_rr, 'wb') as fh:
-    #     pickle.dump(resize_ratio_ls, fh)
+    file_cache_rr = os.path.join(Feat['cache_dir'], 'feat_{}_{}_rr.pickle'.format(category, set_type))
+    with open(file_cache_rr, 'wb') as fh:
+        pickle.dump(resize_ratio_ls, fh)
         
             
 if __name__=='__main__':
     extractor = FeatureExtractor(cache_folder=model_cache_folder, which_net='vgg16', which_layer=VC['layer'], which_snapshot=0)
     for category in all_categories2:
-        extractLayerFeat_whole(category, extractor, set_type='occ_NINE')
+        extractLayerFeat_whole(category, extractor, set_type='train')

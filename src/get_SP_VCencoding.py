@@ -5,12 +5,12 @@ from config import *
 import h5py
 
 def get_SP_VCencoding(category, set_type='train'):
+    # get magic threshold
     thrh_file = os.path.join(Model_dir,'magic_thh_{}_{}.pickle'.format(set_type,VC['layer']))
     with open(thrh_file, 'rb') as fh:
         thrh_ls = pickle.load(fh)
 
     magic_thrh = thrh_ls[all_categories2.index(category)]
-#     magic_thrh = 0.65
 
     # get file list
     filelist = Dataset['{}_list'.format(set_type)].format(category)
@@ -45,14 +45,7 @@ def get_SP_VCencoding(category, set_type='train'):
     for nn in range(N):
         layer_feature_b[nn] = r_set[nn]<magic_thrh
         
-#     res_info_file = '/mnt/1TB_SSD/qing/SP/mat_file/res_info_train.mat'
-#     f = h5py.File(res_info_file)
-#     res_info = f['res_info']
-#     layer_feature_b = [None for nn in range(N)]
-#     for nn in range(N):
-#         group = f[res_info[nn][0]]
-#         layer_feature_b[nn] = (np.array(group['layer_feature_dist']).T<magic_thrh).astype(int)
-
+        
     feature_len = VC['num']*(2*SP['patch_r']+1)**2
     all_info = [None for nn in range(N)]
     
@@ -91,7 +84,7 @@ def get_SP_VCencoding(category, set_type='train'):
                 spi_box = matcontent['anno'][int(idx_list[nn])-1,1][mm,0][kk]
                 
                 # for resized whole image:
-                spi_box = spi_box[4:8]*resize_ratio
+                spi_box = (spi_box[4:8]-1)*resize_ratio+1
 
                 xy = (spi_box[0:2]+spi_box[2:4])/2
                 # pool_xy = (xy//Astride).astype(int)

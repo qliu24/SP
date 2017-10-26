@@ -120,7 +120,7 @@ def eval_AP_inner(inp):
 
 paral_num = 6
 category = 'car'
-set_type = 'occ'
+set_type = 'test'
 
 
 # load model
@@ -170,7 +170,7 @@ with open(file_cache_feat, 'rb') as fh:
     layer_feature = pickle.load(fh)
     
 N = len(layer_feature)
-# N = 200
+N = 100
 print('Total image number for {} set of {}: {}'.format(set_type, category, N))
 
 # get test file list
@@ -235,9 +235,29 @@ for nn in range(N):
                         min(np.floor(bb_o[2]), img_w),  min(np.floor(bb_o[3]), img_h)])
                 spanno[nn][pp][ii] = bb_o
             
-            
+
+# modify the weights so that it matches the dense features
+for pp in range(sp_num-2):
+    for kk in range(SP['cls_num']):
+        weights_old = sp_models[pp][kk][0].reshape(2*SP['patch_r']+1, 2*SP['patch_r']+1, VC['num'])
+        weights_new = np.zeros((4*SP['patch_r']+1, 4*SP['patch_r']+1, VC['num']))
+        for wrr in range(0,4*SP['patch_r']+1,2):
+            for wcc in range(0,4*SP['patch_r']+1,2):
+                weights_new[wrr,wcc] = weights_old[wrr//2, wcc//2]
+                
+        sp_models[pp][kk] = (weights_new.ravel(),sp_models[pp][kk][1],sp_models[pp][kk][2],sp_models[pp][kk][3])
+        
+for pp in range(sp_num-2, sp_num):
+    weights_old = sp_models[pp][0].reshape(2*SP['patch_r']+1, 2*SP['patch_r']+1, VC['num'])
+    weights_new = np.zeros((4*SP['patch_r']+1, 4*SP['patch_r']+1, VC['num']))
+    for wrr in range(0,4*SP['patch_r']+1,2):
+        for wcc in range(0,4*SP['patch_r']+1,2):
+            weights_new[wrr,wcc] = weights_old[wrr//2, wcc//2]
+
+    sp_models[pp] = (weights_new.ravel(),sp_models[pp][1],sp_models[pp][2])
+        
 # get scores for each pixel
-sc = ScoreComputer(SP['patch_r'], VC['num'], sp_num)
+sc = ScoreComputer(SP['patch_r']*2, VC['num'], sp_num)
 
 score_map = [None for nn in range(N)]
 for nn in range(N):
@@ -252,40 +272,40 @@ for nn in range(N):
     lfr = cdist(lff_norm, centers, 'cosine').reshape(iheight,iwidth,-1)
     lfb = (lfr<magic_thrh).astype(int)
     # lfb = layer_feature_b[nn]
-    lfb_height, lfb_width = lfb.shape[0:2]
+#     lfb_height, lfb_width = lfb.shape[0:2]
     
-    rr_offset = [0,1]
-    cc_offset = [0,1]
-    lfb_ls = []
-    msk_ls = []
+#     rr_offset = [0,1]
+#     cc_offset = [0,1]
+#     lfb_ls = []
+#     msk_ls = []
     
-    for rr_os in rr_offset:
-        for cc_os in cc_offset:
-            msk_base = np.zeros_like(lfb)
-            for rr_msk in range(rr_os,lfb_height, 2):
-                for cc_msk in range(cc_os, lfb_width, 2):
-                    msk_base[rr_msk, cc_msk] = 1
+#     for rr_os in rr_offset:
+#         for cc_os in cc_offset:
+#             msk_base = np.zeros_like(lfb)
+#             for rr_msk in range(rr_os,lfb_height, 2):
+#                 for cc_msk in range(cc_os, lfb_width, 2):
+#                     msk_base[rr_msk, cc_msk] = 1
                     
-            msk_base = msk_base.astype(bool)
+#             msk_base = msk_base.astype(bool)
             
-            lfb_height_new = np.sum(msk_base[:,cc_os,0])
-            lfb_width_new = np.sum(msk_base[rr_os,:,0])
-            lfb_selected = (lfb.ravel()[msk_base.ravel()]).reshape(lfb_height_new, lfb_width_new, -1)
-            assert(lfb_selected.shape[2]==VC['num'])
+#             lfb_height_new = np.sum(msk_base[:,cc_os,0])
+#             lfb_width_new = np.sum(msk_base[rr_os,:,0])
+#             lfb_selected = (lfb.ravel()[msk_base.ravel()]).reshape(lfb_height_new, lfb_width_new, -1)
+#             assert(lfb_selected.shape[2]==VC['num'])
             
-            msk_ls.append(msk_base[:,:,0:sp_num].copy())
-            lfb_ls.append(lfb_selected.copy())
+#             msk_ls.append(msk_base[:,:,0:sp_num].copy())
+#             lfb_ls.append(lfb_selected.copy())
             
-    score_all = np.zeros((lfb_height, lfb_width, sp_num)).ravel()
-    for msk_curr,lfb_curr in zip(msk_ls, lfb_ls):
-        score_curr = sc.comptScore_mixture(lfb_curr, sp_models, SP['cls_num'])
-        score_all[msk_curr.ravel()] = score_curr.ravel()
+#     score_all = np.zeros((lfb_height, lfb_width, sp_num)).ravel()
+#     for msk_curr,lfb_curr in zip(msk_ls, lfb_ls):
+#         score_curr = sc.comptScore_mixture(lfb_curr, sp_models, SP['cls_num'])
+#         score_all[msk_curr.ravel()] = score_curr.ravel()
         
-    score_all = score_all.reshape(lfb_height, lfb_width, -1)
-    assert(score_all.shape[2]==sp_num)
-        
-        
-    score_map[nn] = score_all.copy()
+#     score_all = score_all.reshape(lfb_height, lfb_width, -1)
+#     assert(score_all.shape[2]==sp_num)
+    
+#     score_map[nn] = score_all.copy()
+    score_map[nn] = sc.comptScore_mixture(lfb, sp_models, SP['cls_num'])
     
 # Evaluation
 # rich BG
